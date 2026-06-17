@@ -1,0 +1,39 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import type { CollectionEntry } from 'astro:content';
+
+interface Props {
+  post: CollectionEntry<'posts'>;
+}
+
+const { post } = Astro.props;
+const { title, description, pubDate, tags, lang } = post.data;
+
+const formattedDate = pubDate.toLocaleDateString(lang === 'zh-TW' ? 'zh-TW' : 'en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<BaseLayout title={title} description={description} lang={lang}>
+  <div class="container">
+    <header class="post-header">
+      <div class="post-header-meta">
+        <a href="/" class="back-link">← 所有文章</a>
+        {tags?.map(tag => (
+          <span class={`post-card-tag${tag === 'zh-TW' || lang === 'zh-TW' ? ' lang-zh' : ''}`}>
+            {tag}
+          </span>
+        ))}
+      </div>
+      <h1 class="post-header-title">{title}</h1>
+      {description && <p class="post-header-desc">{description}</p>}
+      <p style="font-size: 0.875rem; color: var(--color-muted);">{formattedDate}</p>
+    </header>
+    <hr class="post-divider" />
+    <article class="prose post-body">
+      <slot />
+    </article>
+  </div>
+</BaseLayout>
