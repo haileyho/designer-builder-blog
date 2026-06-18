@@ -2,84 +2,41 @@
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { getCollection } from 'astro:content';
 
-const posts = (await getCollection('posts')).sort(
-  (a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf()
-);
+const posts = await getCollection('posts');
+const featured = posts.find(p => p.slug === '20-ways-future-proof-design-career');
+const { Content } = featured ? await featured.render() : { Content: null };
+const post = featured;
 ---
 
-<BaseLayout title="Designer × Builder — Hailey Ho">
-  <!-- Hero -->
-  <section class="hero">
-    <div class="container">
-      <div class="hero-inner">
-        <div>
-          <span class="hero-eyebrow">Designer × Builder</span>
-          <h1 class="hero-title">設計的人，<br />也造東西。</h1>
-          <p class="hero-sub">
-            關於產品設計、AI 工具、以及在建造過程中學到的事。<br />
-            Writing about design, AI, and the process of making.
-          </p>
-          <a href="#posts" class="btn-secondary">瀏覽文章 →</a>
-        </div>
-        <div class="hero-card" aria-hidden="true">
-          <div class="card-label">最新文章 / Latest</div>
-          {posts.slice(0, 1).map(post => (
-            <div>
-              <div class="code-line">─────────────────────────</div>
-              <div><span class="code-key">title</span>   <span class="code-str">{post.data.title.slice(0, 36)}{post.data.title.length > 36 ? '…' : ''}</span></div>
-              <div><span class="code-key">date</span>    <span class="code-val">{post.data.pubDate.toISOString().slice(0, 10)}</span></div>
-              <div><span class="code-key">tags</span>    <span class="code-val">[{post.data.tags?.join(', ')}]</span></div>
-              <div class="code-line">─────────────────────────</div>
-            </div>
-          ))}
-          {posts.length === 0 && (
-            <div>
-              <div class="code-line">─────────────────────────</div>
-              <div><span class="code-key">status</span>  <span class="code-val">"first post coming soon"</span></div>
-              <div class="code-line">─────────────────────────</div>
-            </div>
+<BaseLayout
+  title={post ? post.data.title : 'Designer × Builder — Hailey Ho'}
+  description={post?.data.description}
+  lang="zh-TW"
+>
+  <div class="container">
+    {post && (
+      <>
+        <header class="post-header">
+          <div class="post-header-meta">
+            <span class="post-card-tag lang-zh">中文</span>
+            {post.data.tags?.map(tag => (
+              <span class="post-card-tag">{tag}</span>
+            ))}
+          </div>
+          <h1 class="post-header-title">{post.data.title}</h1>
+          {post.data.description && (
+            <p class="post-header-desc">{post.data.description}</p>
           )}
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Posts -->
-  <section class="posts-section" id="posts">
-    <div class="container">
-      <p class="section-label">所有文章 / All Posts</p>
-
-      {posts.length === 0 ? (
-        <div style="text-align: center; padding: var(--space-xxl) 0; color: var(--color-muted);">
-          <p style="font-family: var(--font-display); font-size: 1.5rem; color: var(--color-ink); margin-bottom: var(--space-md);">文章即將上線。</p>
-          <p>First posts coming soon.</p>
-        </div>
-      ) : (
-        <div class="posts-grid">
-          {posts.map(post => {
-            const formattedDate = post.data.pubDate.toLocaleDateString(
-              post.data.lang === 'zh-TW' ? 'zh-TW' : 'en-US',
-              { year: 'numeric', month: 'short', day: 'numeric' }
-            );
-            return (
-              <a href={`/posts/${post.slug}`} class="post-card">
-                <div class="post-card-meta">
-                  <span class="post-card-date">{formattedDate}</span>
-                  {post.data.lang === 'zh-TW' && (
-                    <span class="post-card-tag lang-zh">中文</span>
-                  )}
-                  {post.data.tags?.slice(0, 2).map(tag => (
-                    <span class="post-card-tag">{tag}</span>
-                  ))}
-                </div>
-                <h2 class="post-card-title">{post.data.title}</h2>
-                <p class="post-card-desc">{post.data.description}</p>
-                <span class="post-card-link">閱讀 →</span>
-              </a>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  </section>
+          <p style="font-size:0.875rem; color:var(--color-muted); margin-top:var(--space-xs);">
+            {post.data.pubDate.toLocaleDateString('zh-TW', { year:'numeric', month:'long', day:'numeric' })}
+            　·　Hailey Ho
+          </p>
+        </header>
+        <hr class="post-divider" />
+        <article class="prose post-body">
+          <Content />
+        </article>
+      </>
+    )}
+  </div>
 </BaseLayout>
