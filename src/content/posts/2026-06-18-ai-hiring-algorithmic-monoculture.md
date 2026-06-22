@@ -1,5 +1,5 @@
 ---
-title: "90% 的企業用 AI 篩履歷——但這套系統正在系統性地拒絕某些族群"
+title: "90% 的企業用 AI 篩履歷 但這套系統正在系統性地拒絕某些族群"
 pubDate: 2026-06-20
 description: "Stanford 研究分析 340 萬筆真實求職資料，首次揭露 AI 徵才工具的種族偏見與演算法壟斷問題。當多數企業共用同一套演算法，被拒絕的人往往哪裡都進不去。"
 tags: ["AI", "設計倫理", "演算法偏見"]
@@ -7,17 +7,14 @@ slug: ai-hiring-algorithmic-monoculture
 lang: zh-TW
 ---
 
+
+
 你投了一份履歷。然後又投了一份。再投。每次都石沉大海。
-
 你以為是自己不夠好。但有沒有一種可能，是這套系統本來就設計成不讓你通過？
-
----
 
 ## AI 篩履歷已經是常態，但問題比你想的更系統性
 
 根據世界經濟論壇的數據，全球超過 **90% 的企業**目前都使用自動化系統篩選求職者。應徵 Google、Meta、大型金融機構——你的履歷大概率在任何人類看到它之前，就已經被演算法決定命運了。
-
-這本身不是新聞。
 
 真正讓人不安的，是 2026 年 Stanford 一份研究揭露的事：**許多企業不只是在用 AI，而是在用同一套 AI。**
 
@@ -99,5 +96,13 @@ Bana 的建議：
 每一個這樣的決定，都是設計選擇。
 
 ---
+
+參考資料：
+@article{bommasani2026algorithmic,
+  title={Algorithmic Monocultures in Hiring},
+  author={Bommasani, Rishi and Bana, Sarah H. and Creel, Kathleen A. and Jurafsky, Dan and Liang, Percy},
+  booktitle={Proceedings of the 2026 ACM Conference on Fairness, Accountability, and Transparency},
+  year={2026}
+}
 
 *如果你喜歡這篇文章，歡迎分享給那些正在找工作、或正在做數位產品的朋友。*
