@@ -4,7 +4,6 @@ import { getCollection } from 'astro:content';
 
 const allPosts = await getCollection('posts');
 const posts = allPosts
-  .filter(p => p.slug !== 'hello-world')
   .sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
 ---
 
