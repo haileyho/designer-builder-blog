@@ -240,17 +240,11 @@ code:not(pre code) {
 .nav-wordmark {
   display: flex;
   align-items: center;
-  gap: var(--space-xs);
-  font-family: var(--font-body);
-  font-weight: 500;
-  font-size: 0.875rem;
-  color: var(--color-ink);
 }
 
-.nav-wordmark .spike {
-  width: 18px;
+.nav-logo {
   height: 18px;
-  color: var(--color-primary);
+  width: auto;
 }
 
 .nav-links {
@@ -537,6 +531,7 @@ code:not(pre code) {
   background: var(--color-surface-dark);
   color: var(--color-on-dark-soft);
   padding: 64px 0;
+  margin-top: var(--space-section);
 }
 
 .site-footer .container {
@@ -547,13 +542,12 @@ code:not(pre code) {
 }
 
 .footer-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-on-dark);
   margin-bottom: var(--space-sm);
+}
+
+.footer-logo {
+  height: 16px;
+  width: auto;
 }
 
 .footer-tagline {

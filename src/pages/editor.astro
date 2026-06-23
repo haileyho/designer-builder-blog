@@ -1,0 +1,840 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { getCollection } from 'astro:content';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const allPosts = await getCollection('posts');
+const posts = allPosts.sort((a, b) => b.data.pubDate.valueOf() - a.data.pubDate.valueOf());
+
+const contentDir = path.resolve('src/content/posts');
+
+const postsData = posts.map(p => {
+  let customSlug = '';
+  try {
+    const raw = fs.readFileSync(path.join(contentDir, p.id), 'utf8');
+    const m = raw.match(/^slug:\s*(.+)$/m);
+    if (m) customSlug = m[1].trim();
+  } catch {}
+  return {
+    slug: p.slug,
+    filePath: p.id,
+    title: p.data.title,
+    description: p.data.description,
+    tags: p.data.tags || [],
+    pubDate: p.data.pubDate.toISOString().split('T')[0],
+    lang: p.data.lang || 'en',
+    customSlug,
+    body: p.body,
+  };
+});
+---
+
+<BaseLayout title="文章編輯器 — Designer × Builder" lang="zh-TW">
+  <div class="container">
+    <div class="editor-page">
+      <header class="editor-header">
+        <h1 class="editor-title">文章編輯器</h1>
+        <p class="editor-desc">選擇一篇文章來編輯內容和標籤</p>
+        <div class="gh-token-bar" id="ghTokenBar">
+          <div class="gh-token-status" id="ghTokenStatus">
+            <span class="gh-dot gh-dot-off"></span>
+            <span>未連接 GitHub</span>
+          </div>
+          <button type="button" class="btn-secondary btn-sm" id="btnTokenToggle">設定 Token</button>
+          <div class="gh-token-form" id="ghTokenForm" style="display:none;">
+            <input class="field-input gh-token-input" type="password" id="ghTokenInput" placeholder="ghp_xxxxxxxxxxxx" />
+            <button type="button" class="btn-primary btn-sm" id="btnTokenSave">儲存</button>
+            <button type="button" class="btn-secondary btn-sm" id="btnTokenClear">清除</button>
+            <a class="gh-token-help" href="https://github.com/settings/tokens/new?scopes=repo&description=designer-builder-blog-editor" target="_blank" rel="noopener">建立 Token →</a>
+          </div>
+        </div>
+      </header>
+
+      <div class="editor-layout">
+        <!-- Post list sidebar -->
+        <aside class="editor-sidebar" id="sidebar">
+          <button type="button" class="btn-new-post" id="btnNewPost">＋ 新增文章</button>
+          <h2 class="sidebar-label">所有文章</h2>
+          <ul class="post-picker" id="postPicker">
+            {posts.map((post, i) => (
+              <li>
+                <button class="picker-item" data-index={i}>
+                  <span class="picker-title">{post.data.title}</span>
+                  <span class="picker-date">{post.data.pubDate.toLocaleDateString('zh-TW')}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </aside>
+
+        <!-- Editor panel -->
+        <div class="editor-panel" id="editorPanel">
+          <div class="editor-empty" id="editorEmpty">
+            <p>← 從左側選擇一篇文章開始編輯</p>
+          </div>
+
+          <form class="editor-form" id="editorForm" style="display:none;">
+            <!-- Filename (new posts only) -->
+            <div class="field-group" id="filenameGroup" style="display:none;">
+              <label class="field-label" for="fieldFilename">檔案名稱</label>
+              <div class="filename-row">
+                <input class="field-input" type="text" id="fieldFilename" placeholder="my-new-post" />
+                <span class="filename-ext">.md</span>
+              </div>
+              <span class="field-hint">只能使用英文、數字和連字號（-）</span>
+            </div>
+
+            <!-- Metadata fields -->
+            <div class="field-group">
+              <label class="field-label" for="fieldTitle">標題</label>
+              <input class="field-input" type="text" id="fieldTitle" />
+            </div>
+
+            <div class="field-group">
+              <label class="field-label" for="fieldDesc">描述</label>
+              <textarea class="field-input field-textarea" id="fieldDesc" rows="2"></textarea>
+            </div>
+
+            <div class="field-row">
+              <div class="field-group" style="flex:1;">
+                <label class="field-label" for="fieldDate">發布日期</label>
+                <input class="field-input" type="date" id="fieldDate" />
+              </div>
+              <div class="field-group" style="flex:1;">
+                <label class="field-label" for="fieldLang">語言</label>
+                <select class="field-input" id="fieldLang">
+                  <option value="zh-TW">中文</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Tags -->
+            <div class="field-group">
+              <label class="field-label">標籤</label>
+              <div class="tags-editor" id="tagsEditor">
+                <div class="tags-list" id="tagsList"></div>
+                <div class="tag-input-row">
+                  <input class="field-input tag-input" type="text" id="tagInput" placeholder="輸入標籤後按 Enter" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Body -->
+            <div class="field-group field-group-grow">
+              <label class="field-label" for="fieldBody">文章內容（Markdown）</label>
+              <textarea class="field-input field-body" id="fieldBody"></textarea>
+            </div>
+
+            <!-- Actions -->
+            <div class="editor-actions">
+              <button type="button" class="btn-primary" id="btnSave">儲存</button>
+              <button type="button" class="btn-primary btn-publish" id="btnPublish">發布到 GitHub</button>
+              <button type="button" class="btn-secondary" id="btnReset">重設</button>
+              <button type="button" class="btn-secondary" id="btnDownload">下載 .md</button>
+              <button type="button" class="btn-secondary" id="btnCopy">複製</button>
+            </div>
+
+            <p class="editor-hint" id="editorHint"></p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</BaseLayout>
+
+<script define:vars={{ postsData }}>
+  const REPO_OWNER = 'haileyho';
+  const REPO_NAME = 'designer-builder-blog';
+  const CONTENT_DIR = 'src/content/posts';
+  const TOKEN_KEY = 'gh-editor-token';
+
+  const posts = postsData;
+  let currentIndex = -1;
+  let currentTags = [];
+  let isNewPost = false;
+
+  // DOM refs
+  const picker = document.getElementById('postPicker');
+  const editorEmpty = document.getElementById('editorEmpty');
+  const editorForm = document.getElementById('editorForm');
+  const filenameGroup = document.getElementById('filenameGroup');
+  const fieldFilename = document.getElementById('fieldFilename');
+  const fieldTitle = document.getElementById('fieldTitle');
+  const fieldDesc = document.getElementById('fieldDesc');
+  const fieldDate = document.getElementById('fieldDate');
+  const fieldLang = document.getElementById('fieldLang');
+  const tagsList = document.getElementById('tagsList');
+  const tagInput = document.getElementById('tagInput');
+  const fieldBody = document.getElementById('fieldBody');
+  const btnDownload = document.getElementById('btnDownload');
+  const btnCopy = document.getElementById('btnCopy');
+  const btnReset = document.getElementById('btnReset');
+  const btnPublish = document.getElementById('btnPublish');
+  const btnSave = document.getElementById('btnSave');
+  const btnNewPost = document.getElementById('btnNewPost');
+  const editorHint = document.getElementById('editorHint');
+
+  // GitHub token UI
+  const ghTokenStatus = document.getElementById('ghTokenStatus');
+  const btnTokenToggle = document.getElementById('btnTokenToggle');
+  const ghTokenForm = document.getElementById('ghTokenForm');
+  const ghTokenInput = document.getElementById('ghTokenInput');
+  const btnTokenSave = document.getElementById('btnTokenSave');
+  const btnTokenClear = document.getElementById('btnTokenClear');
+
+  function getToken() {
+    return localStorage.getItem(TOKEN_KEY) || '';
+  }
+
+  function updateTokenUI() {
+    const token = getToken();
+    if (token) {
+      ghTokenStatus.innerHTML = '<span class="gh-dot gh-dot-on"></span><span>已連接 GitHub</span>';
+      btnTokenToggle.textContent = '修改 Token';
+      btnPublish.disabled = false;
+    } else {
+      ghTokenStatus.innerHTML = '<span class="gh-dot gh-dot-off"></span><span>未連接 GitHub</span>';
+      btnTokenToggle.textContent = '設定 Token';
+      btnPublish.disabled = true;
+    }
+  }
+
+  btnTokenToggle.addEventListener('click', () => {
+    const visible = ghTokenForm.style.display !== 'none';
+    ghTokenForm.style.display = visible ? 'none' : 'flex';
+    if (!visible) ghTokenInput.value = getToken();
+  });
+
+  btnTokenSave.addEventListener('click', () => {
+    const val = ghTokenInput.value.trim();
+    if (val) {
+      localStorage.setItem(TOKEN_KEY, val);
+      ghTokenForm.style.display = 'none';
+      updateTokenUI();
+      editorHint.textContent = '✓ GitHub Token 已儲存';
+    }
+  });
+
+  btnTokenClear.addEventListener('click', () => {
+    localStorage.removeItem(TOKEN_KEY);
+    ghTokenInput.value = '';
+    ghTokenForm.style.display = 'none';
+    updateTokenUI();
+    editorHint.textContent = 'Token 已清除';
+  });
+
+  updateTokenUI();
+
+  // New post
+  function newPost() {
+    isNewPost = true;
+    currentIndex = -1;
+    fieldFilename.value = '';
+    fieldTitle.value = '';
+    fieldDesc.value = '';
+    fieldDate.value = new Date().toISOString().split('T')[0];
+    fieldLang.value = 'zh-TW';
+    fieldBody.value = '';
+    currentTags = [];
+    renderTags();
+
+    filenameGroup.style.display = 'flex';
+    editorEmpty.style.display = 'none';
+    editorForm.style.display = 'flex';
+
+    picker.querySelectorAll('.picker-item').forEach(btn => btn.classList.remove('active'));
+    btnNewPost.classList.add('active');
+
+    editorHint.textContent = '';
+    fieldFilename.focus();
+  }
+
+  // Load existing post
+  function loadPost(index) {
+    isNewPost = false;
+    currentIndex = index;
+    const post = posts[index];
+    fieldTitle.value = post.title;
+    fieldDesc.value = post.description;
+    fieldDate.value = post.pubDate;
+    fieldLang.value = post.lang;
+    fieldBody.value = post.body;
+    currentTags = [...post.tags];
+    renderTags();
+
+    filenameGroup.style.display = 'none';
+    editorEmpty.style.display = 'none';
+    editorForm.style.display = 'flex';
+
+    picker.querySelectorAll('.picker-item').forEach((btn, i) => {
+      btn.classList.toggle('active', i === index);
+    });
+    btnNewPost.classList.remove('active');
+
+    editorHint.textContent = '';
+  }
+
+  function renderTags() {
+    tagsList.innerHTML = '';
+    currentTags.forEach((tag, i) => {
+      const el = document.createElement('span');
+      el.className = 'tag-chip';
+      el.innerHTML = `${tag}<button type="button" class="tag-remove" data-i="${i}">&times;</button>`;
+      tagsList.appendChild(el);
+    });
+  }
+
+  function buildMarkdown() {
+    const post = isNewPost ? null : posts[currentIndex];
+    const fm = [`---`];
+    fm.push(`title: "${fieldTitle.value.replace(/"/g, '\\"')}"`);
+    fm.push(`pubDate: ${fieldDate.value}`);
+    fm.push(`description: "${fieldDesc.value.replace(/"/g, '\\"')}"`);
+    if (currentTags.length) {
+      fm.push(`tags: [${currentTags.map(t => `"${t}"`).join(', ')}]`);
+    }
+    if (post?.customSlug) {
+      fm.push(`slug: ${post.customSlug}`);
+    }
+    if (fieldLang.value !== 'en') {
+      fm.push(`lang: ${fieldLang.value}`);
+    }
+    fm.push(`---`);
+    return fm.join('\n') + '\n\n' + fieldBody.value;
+  }
+
+  function getNewFilename() {
+    const slug = fieldFilename.value.trim().replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+    return slug ? `${fieldDate.value}-${slug}.md` : '';
+  }
+
+  function getFilename() {
+    if (isNewPost) return getNewFilename();
+    return posts[currentIndex].filePath;
+  }
+
+  function getGitHubPath() {
+    if (isNewPost) return `${CONTENT_DIR}/${getNewFilename()}`;
+    return `${CONTENT_DIR}/${posts[currentIndex].filePath}`;
+  }
+
+  // GitHub API: get file SHA (needed for updates)
+  async function getFileSha(path, token) {
+    const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Accept': 'application/vnd.github.v3+json',
+      },
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.sha;
+  }
+
+  // GitHub API: create or update file
+  async function publishToGitHub() {
+    const token = getToken();
+    if (!token) {
+      editorHint.textContent = '請先設定 GitHub Token';
+      return;
+    }
+
+    if (!fieldTitle.value.trim()) {
+      editorHint.textContent = '請輸入標題';
+      return;
+    }
+
+    if (isNewPost && !fieldFilename.value.trim()) {
+      editorHint.textContent = '請輸入檔案名稱';
+      fieldFilename.focus();
+      return;
+    }
+
+    const path = getGitHubPath();
+    const content = buildMarkdown();
+    const encoded = btoa(unescape(encodeURIComponent(content)));
+
+    btnPublish.disabled = true;
+    btnPublish.textContent = '發布中...';
+    editorHint.textContent = '';
+
+    try {
+      const sha = await getFileSha(path, token);
+
+      const body = {
+        message: isNewPost ? `新增文章：${fieldTitle.value}` : `更新文章：${fieldTitle.value}`,
+        content: encoded,
+        branch: 'main',
+      };
+      if (sha) body.sha = sha;
+
+      const res = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${path}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.message || `HTTP ${res.status}`);
+      }
+
+      btnPublish.textContent = '發布到 GitHub';
+      btnPublish.disabled = false;
+      editorHint.textContent = '✓ 已發布到 GitHub！網站將在幾分鐘內自動更新。';
+    } catch (err) {
+      btnPublish.textContent = '發布到 GitHub';
+      btnPublish.disabled = false;
+      editorHint.textContent = `✗ 發布失敗：${err.message}`;
+      editorHint.style.color = 'var(--color-error)';
+      setTimeout(() => { editorHint.style.color = ''; }, 5000);
+    }
+  }
+
+  // Events
+  btnNewPost.addEventListener('click', () => newPost());
+
+  picker.addEventListener('click', (e) => {
+    const btn = e.target.closest('.picker-item');
+    if (btn) loadPost(Number(btn.dataset.index));
+  });
+
+  tagInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = tagInput.value.trim();
+      if (val && !currentTags.includes(val)) {
+        currentTags.push(val);
+        renderTags();
+      }
+      tagInput.value = '';
+    }
+  });
+
+  tagsList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tag-remove');
+    if (btn) {
+      currentTags.splice(Number(btn.dataset.i), 1);
+      renderTags();
+    }
+  });
+
+  // Save locally
+  btnSave.addEventListener('click', async () => {
+    if (!isNewPost && currentIndex < 0) return;
+    if (!fieldTitle.value.trim()) {
+      editorHint.textContent = '請輸入標題';
+      return;
+    }
+    if (isNewPost && !fieldFilename.value.trim()) {
+      editorHint.textContent = '請輸入檔案名稱';
+      fieldFilename.focus();
+      return;
+    }
+
+    const filename = getFilename();
+    const content = buildMarkdown();
+
+    btnSave.disabled = true;
+    btnSave.textContent = '儲存中...';
+    try {
+      const res = await fetch('/api/save-post', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename, content }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      editorHint.textContent = `✓ 已儲存 ${filename}`;
+    } catch (err) {
+      editorHint.textContent = `✗ 儲存失敗：${err.message}`;
+      editorHint.style.color = 'var(--color-error)';
+      setTimeout(() => { editorHint.style.color = ''; }, 5000);
+    }
+    btnSave.disabled = false;
+    btnSave.textContent = '儲存';
+  });
+
+  btnDownload.addEventListener('click', () => {
+    const md = buildMarkdown();
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = getFilename();
+    a.click();
+    URL.revokeObjectURL(a.href);
+    editorHint.textContent = `✓ 已下載 ${getFilename()}`;
+  });
+
+  btnCopy.addEventListener('click', async () => {
+    const md = buildMarkdown();
+    await navigator.clipboard.writeText(md);
+    editorHint.textContent = '✓ 已複製到剪貼簿';
+  });
+
+  btnReset.addEventListener('click', () => {
+    if (isNewPost) newPost();
+    else if (currentIndex >= 0) loadPost(currentIndex);
+  });
+
+  btnPublish.addEventListener('click', () => {
+    if (!isNewPost && currentIndex < 0) return;
+    const action = isNewPost ? '新增' : '更新';
+    if (confirm(`確定要${action}「${fieldTitle.value}」並發布到 GitHub 嗎？`)) {
+      publishToGitHub();
+    }
+  });
+</script>
+
+<style>
+  .editor-page {
+    padding: var(--space-xl) 0 var(--space-xxl);
+  }
+
+  .editor-header {
+    margin-bottom: var(--space-xl);
+  }
+
+  .editor-title {
+    font-family: var(--font-display);
+    font-size: clamp(1.75rem, 4vw, 2.5rem);
+    color: var(--color-ink);
+    margin-bottom: var(--space-xs);
+  }
+
+  .editor-desc {
+    color: var(--color-muted);
+    font-size: 0.9375rem;
+  }
+
+  .editor-layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: var(--space-xl);
+    min-height: 70vh;
+  }
+
+  /* Sidebar */
+  .editor-sidebar {
+    border-right: 1px solid var(--color-hairline);
+    padding-right: var(--space-xl);
+  }
+
+  .btn-new-post {
+    width: 100%;
+    padding: var(--space-sm) var(--space-md);
+    margin-bottom: var(--space-md);
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    border: none;
+    border-radius: var(--radius-md);
+    font-family: var(--font-body);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .btn-new-post:hover {
+    background: var(--color-primary-active);
+  }
+
+  .btn-new-post.active {
+    background: var(--color-primary-active);
+  }
+
+  .filename-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+  }
+
+  .filename-ext {
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    color: var(--color-muted);
+    white-space: nowrap;
+  }
+
+  .field-hint {
+    font-size: 0.75rem;
+    color: var(--color-muted-soft);
+  }
+
+  .sidebar-label {
+    font-family: var(--font-body);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--color-muted);
+    margin-bottom: var(--space-md);
+  }
+
+  .post-picker {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .picker-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    width: 100%;
+    text-align: left;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    padding: var(--space-sm) var(--space-md);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    font-family: var(--font-body);
+  }
+
+  .picker-item:hover {
+    background: var(--color-surface-soft);
+  }
+
+  .picker-item.active {
+    background: var(--color-surface-card);
+    border-color: var(--color-hairline);
+  }
+
+  .picker-title {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--color-ink);
+    line-height: 1.3;
+  }
+
+  .picker-date {
+    font-size: 0.75rem;
+    color: var(--color-muted);
+  }
+
+  /* Editor panel */
+  .editor-panel {
+    min-width: 0;
+  }
+
+  .editor-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--color-muted);
+    font-size: 0.9375rem;
+  }
+
+  .editor-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-lg);
+  }
+
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  .field-group-grow {
+    flex: 1;
+  }
+
+  .field-row {
+    display: flex;
+    gap: var(--space-lg);
+  }
+
+  .field-label {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--color-muted);
+    letter-spacing: 0.02em;
+  }
+
+  .field-input {
+    font-family: var(--font-body);
+    font-size: 0.9375rem;
+    color: var(--color-ink);
+    background: var(--color-canvas);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-md);
+    padding: var(--space-sm) var(--space-md);
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+
+  .field-input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+  }
+
+  .field-textarea {
+    resize: vertical;
+  }
+
+  .field-body {
+    min-height: 400px;
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    resize: vertical;
+  }
+
+  /* Tags */
+  .tags-editor {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .tags-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-xs);
+  }
+
+  .tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--color-surface-card);
+    color: var(--color-ink);
+    font-size: 0.8125rem;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: var(--radius-pill);
+  }
+
+  .tag-remove {
+    background: none;
+    border: none;
+    color: var(--color-muted);
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+    padding: 0 2px;
+  }
+
+  .tag-remove:hover {
+    color: var(--color-error);
+  }
+
+  .tag-input-row {
+    max-width: 240px;
+  }
+
+  .tag-input {
+    font-size: 0.875rem;
+  }
+
+  /* Actions */
+  .editor-actions {
+    display: flex;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+  }
+
+  .editor-hint {
+    font-size: 0.8125rem;
+    color: var(--color-primary);
+    min-height: 1.2em;
+  }
+
+  /* GitHub token bar */
+  .gh-token-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--space-sm);
+    flex-wrap: wrap;
+    margin-top: var(--space-md);
+    padding: var(--space-sm) var(--space-md);
+    background: var(--color-surface-soft);
+    border-radius: var(--radius-md);
+  }
+
+  .gh-token-status {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-size: 0.8125rem;
+    color: var(--color-muted);
+  }
+
+  .gh-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .gh-dot-off { background: var(--color-muted-soft); }
+  .gh-dot-on { background: var(--color-success); }
+
+  .btn-sm {
+    padding: 6px 14px;
+    height: 32px;
+    font-size: 0.8125rem;
+  }
+
+  .gh-token-form {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    flex-wrap: wrap;
+    width: 100%;
+    margin-top: var(--space-xs);
+  }
+
+  .gh-token-input {
+    flex: 1;
+    min-width: 200px;
+    font-size: 0.8125rem;
+    font-family: var(--font-mono);
+  }
+
+  .gh-token-help {
+    font-size: 0.75rem;
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  /* Publish button */
+  .btn-publish {
+    background: var(--color-surface-dark);
+  }
+
+  .btn-publish:hover {
+    background: var(--color-surface-dark-elevated);
+  }
+
+  .btn-publish:disabled {
+    background: var(--color-primary-disabled);
+    color: var(--color-muted);
+    cursor: not-allowed;
+  }
+
+  /* Responsive */
+  @media (max-width: 768px) {
+    .editor-layout {
+      grid-template-columns: 1fr;
+    }
+    .editor-sidebar {
+      border-right: none;
+      border-bottom: 1px solid var(--color-hairline);
+      padding-right: 0;
+      padding-bottom: var(--space-lg);
+    }
+  }
+</style>
